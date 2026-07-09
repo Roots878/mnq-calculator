@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MNQ Contract Sizer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0f12;
+    color: #e8eaed;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px;
+  }
+
+  .card {
+    background: #161a20;
+    border: 1px solid #2a2f38;
+    border-radius: 10px;
+    padding: 28px;
+    width: 100%;
+    max-width: 440px;
+  }
+
+  .eyebrow { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: #5a6478; margin-bottom: 4px; }
+
+  h1 { font-size: 18px; font-weight: 600; color: #c9d1e0; letter-spacing: -0.02em; margin-bottom: 24px; }
+
+  .atr-row { display: flex; align-items: center; gap: 12px; margin-bottom: 24px; }
+
+  .atr-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #5a6478; white-space: nowrap; }
+
+  .atr-input {
+    background: #0d0f12;
+    border: 1px solid #2a2f38;
+    border-radius: 6px;
+    padding: 8px 12px;
+    font-size: 20px;
+    font-weight: 700;
+    font-family: inherit;
+    color: #e8eaed;
+    outline: none;
+    width: 100px;
+    text-align: center;
+  }
+
+  .atr-input:focus { border-color: #4a7cf7; }
+
+  .zone-badge {
+    font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase;
+    padding: 4px 12px; border-radius: 4px; font-weight: 700;
+  }
+  .zone-badge.red    { background: #2a1515; color: #df4949; }
+  .zone-badge.yellow { background: #2a2510; color: #c8b014; }
+  .zone-badge.green  { background: #0a2115; color: #0bb853; }
+
+  hr { border: none; border-top: 1px solid #2a2f38; margin: 4px 0 20px; }
+
+  .slider-block { margin-bottom: 22px; }
+
+  .slider-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+
+  .slider-name { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #5a6478; }
+
+  .slider-value { font-size: 22px; font-weight: 700; letter-spacing: -0.03em; }
+  .slider-value.risk-color     { color: #4a7cf7; }
+  .slider-value.contract-color { color: #c9d1e0; }
+  .slider-value.sl-color       { color: #df4949; }
+
+  .slider-sub { font-size: 10px; color: #5a6478; text-align: right; margin-top: 1px; }
+
+  input[type=range] {
+    -webkit-appearance: none;
+    width: 100%; height: 4px; border-radius: 2px;
+    outline: none; cursor: pointer; margin-top: 6px;
+  }
+
+  input[type=range].risk-track     { background: linear-gradient(to right, #4a7cf7 var(--pct,50%), #2a2f38 var(--pct,50%)); }
+  input[type=range].contract-track { background: linear-gradient(to right, #c9d1e0 var(--pct,50%), #2a2f38 var(--pct,50%)); }
+  input[type=range].sl-track       { background: linear-gradient(to right, #df4949 var(--pct,50%), #2a2f38 var(--pct,50%)); }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 18px; height: 18px;
+    border-radius: 50%; border: 2px solid #0d0f12; cursor: pointer;
+  }
+  input[type=range].risk-track::-webkit-slider-thumb     { background: #4a7cf7; }
+  input[type=range].contract-track::-webkit-slider-thumb { background: #c9d1e0; }
+  input[type=range].sl-track::-webkit-slider-thumb       { background: #df4949; }
+
+  .result-boxes { display: flex; gap: 10px; margin-top: 8px; }
+
+  .res-box { flex: 1; border-radius: 6px; padding: 12px; text-align: center; }
+  .res-box.tp { background: #0a1a10; border: 1px solid #1a3a20; }
+  .res-box.rr { background: #111520; border: 1px solid #2a2f38; }
+
+  .res-val { font-size: 16px; font-weight: 700; }
+  .res-val.green { color: #0bb853; }
+  .res-val.blue  { color: #4a7cf7; }
+
+  .res-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #5a6478; margin-top: 3px; }
+  .res-sub   { font-size: 10px; color: #5a6478; margin-top: 2px; }
+
+  .no-trade { text-align: center; padding: 32px 0; color: #df4949; font-size: 13px; letter-spacing: 0.05em; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="eyebrow">MNQ · Position Sizer</div>
+  <h1>Contract Calculator</h1>
+
+  <div class="atr-row">
+    <span class="atr-label">ATR</span>
+    <input class="atr-input" type="number" id="atrInput" value="18" min="1" max="50" step="0.25">
+    <span class="zone-badge" id="zoneBadge">—</span>
+  </div>
+
+  <hr>
+
+  <div id="mainContent">
+
+    <div class="slider-block">
+      <div class="slider-header">
+        <span class="slider-name">Max Risk</span>
+        <div class="slider-value risk-color" id="riskVal">$300</div>
+      </div>
+      <input type="range" id="riskSlider" class="risk-track" min="50" max="2000" step="10" value="300">
+    </div>
+
+    <div class="slider-block">
+      <div class="slider-header">
+        <span class="slider-name">Contracts</span>
+        <div class="slider-value contract-color" id="contractVal">—</div>
+      </div>
+      <input type="range" id="contractSlider" class="contract-track" min="1" max="40" step="1" value="5">
+    </div>
+
+    <div class="slider-block">
+      <div class="slider-header">
+        <span class="slider-name">Stop Loss</span>
+        <div>
+          <div class="slider-value sl-color" id="slVal">—</div>
+          <div class="slider-sub" id="slTicks">—</div>
+        </div>
+      </div>
+      <input type="range" id="slSlider" class="sl-track" min="1" max="60" step="0.25" value="18">
+    </div>
+
+    <hr>
+
+    <div class="result-boxes">
+      <div class="res-box tp">
+        <div class="res-val green" id="tpVal">—</div>
+        <div class="res-label">TP1 (1× ATR)</div>
+        <div class="res-sub" id="tpSub">—</div>
+      </div>
+      <div class="res-box rr">
+        <div class="res-val blue" id="rrVal">—</div>
+        <div class="res-label">R:R</div>
+        <div class="res-sub" id="winVal">—</div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="noTrade" class="no-trade" style="display:none">ATR out of range — no trade</div>
+</div>
+
+<script>
+  const DOLLAR_PER_POINT = 2;
+  const TICKS_PER_POINT  = 4;
+
+  const atrInput       = document.getElementById('atrInput');
+  const riskSlider     = document.getElementById('riskSlider');
+  const contractSlider = document.getElementById('contractSlider');
+  const slSlider       = document.getElementById('slSlider');
+
+  function getZone(atr) {
+    if (atr <= 12) return 'red';
+    if (atr <= 23) return 'green';
+    if (atr <= 32) return 'yellow';
+    return 'red';
+  }
+
+  function setTrackPct(slider) {
+    const pct = ((+slider.value - +slider.min) / (+slider.max - +slider.min)) * 100;
+    slider.style.setProperty('--pct', pct + '%');
+  }
+
+  function render() {
+    const atr       = parseFloat(atrInput.value) || 18;
+    const risk      = parseFloat(riskSlider.value);
+    const contracts = parseInt(contractSlider.value);
+    const slPts     = parseFloat(slSlider.value);
+
+    const zone  = getZone(atr);
+    const badge = document.getElementById('zoneBadge');
+    badge.className   = 'zone-badge ' + zone;
+    badge.textContent = zone.toUpperCase();
+
+    const main    = document.getElementById('mainContent');
+    const noTrade = document.getElementById('noTrade');
+
+    if (zone === 'red') {
+      main.style.display    = 'none';
+      noTrade.style.display = 'block';
+      return;
+    }
+    main.style.display    = 'block';
+    noTrade.style.display = 'none';
+
+    const actualRisk = contracts * slPts * DOLLAR_PER_POINT;
+    const tpPts      = atr;
+    const tpTicks    = Math.round(tpPts * TICKS_PER_POINT);
+    const slTicks    = Math.round(slPts * TICKS_PER_POINT);
+    const tpWin      = contracts * tpPts * DOLLAR_PER_POINT;
+    const rr         = slPts > 0 ? (tpPts / slPts).toFixed(2) : '—';
+
+    document.getElementById('riskVal').textContent     = '$' + Math.round(actualRisk);
+    document.getElementById('contractVal').textContent = contracts + (contracts >= 40 ? ' (max)' : '');
+    document.getElementById('slVal').textContent       = slPts.toFixed(2) + ' pts';
+    document.getElementById('slTicks').textContent     = slTicks + ' ticks';
+    document.getElementById('tpVal').textContent       = tpPts.toFixed(2) + ' pts';
+    document.getElementById('tpSub').textContent       = tpTicks + ' ticks · +$' + Math.round(tpWin);
+    document.getElementById('rrVal').textContent       = rr + 'R';
+    document.getElementById('winVal').textContent      = '+$' + Math.round(tpWin) + ' at TP';
+
+    setTrackPct(riskSlider);
+    setTrackPct(contractSlider);
+    setTrackPct(slSlider);
+  }
+
+  // Risk dragged → update contracts to match (SL stays)
+  riskSlider.addEventListener('input', () => {
+    const atr   = parseFloat(atrInput.value) || 18;
+    const risk  = parseFloat(riskSlider.value);
+    const slPts = parseFloat(slSlider.value);
+    const contracts = Math.max(1, Math.floor(risk / (slPts * DOLLAR_PER_POINT)));
+    contractSlider.value = Math.min(contracts, +contractSlider.max);
+    render();
+  });
+
+  // Contracts dragged → update risk to match (SL stays)
+  contractSlider.addEventListener('input', () => {
+    const contracts = parseInt(contractSlider.value);
+    const slPts     = parseFloat(slSlider.value);
+    const risk      = contracts * slPts * DOLLAR_PER_POINT;
+    riskSlider.value = Math.min(risk, +riskSlider.max);
+    render();
+  });
+
+  // SL dragged → update risk to match (contracts stay)
+  slSlider.addEventListener('input', () => {
+    const contracts = parseInt(contractSlider.value);
+    const slPts     = parseFloat(slSlider.value);
+    const risk      = contracts * slPts * DOLLAR_PER_POINT;
+    riskSlider.value = Math.min(risk, +riskSlider.max);
+    render();
+  });
+
+  atrInput.addEventListener('input', render);
+
+  render();
+</script>
+</body>
+</html>
