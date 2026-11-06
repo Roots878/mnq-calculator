@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MNQ Contract Sizer</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: #0d0f12;
+    color: #e8eaed;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+  }
+
+  .card {
+    background: #161a20;
+    border: 1px solid #2a2f38;
+    border-radius: 10px;
+    padding: 28px 22px;
+    width: 100%;
+    max-width: 440px;
+  }
+
+  .eyebrow { font-size: 10px; letter-spacing: 0.15em; text-transform: uppercase; color: #5a6478; margin-bottom: 4px; }
+
+  h1 { font-size: 18px; font-weight: 600; color: #c9d1e0; letter-spacing: -0.02em; margin-bottom: 24px; }
+
+  hr { border: none; border-top: 1px solid #2a2f38; margin: 4px 0 18px; }
+
+  /* ── Field rows ─────────────────────────────── */
+  .field { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 16px; }
+
+  .field-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #5a6478; }
+  .field-sub   { font-size: 10px; color: #5a6478; margin-top: 3px; min-height: 12px; }
+
+  .stepper { display: flex; align-items: stretch; flex-shrink: 0; }
+
+  .step-btn {
+    width: 44px;
+    background: #1f242c;
+    border: 1px solid #2a2f38;
+    color: #c9d1e0;
+    font-family: inherit;
+    font-size: 20px;
+    font-weight: 700;
+    cursor: pointer;
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+  }
+  .step-btn:active { background: #2a2f38; }
+  .step-btn.down { border-radius: 6px 0 0 6px; border-right: none; }
+  .step-btn.up   { border-radius: 0 6px 6px 0; border-left: none; }
+
+  .num {
+    width: 104px;
+    background: #0d0f12;
+    border: 1px solid #2a2f38;
+    padding: 9px 6px;
+    font-size: 20px;
+    font-weight: 700;
+    font-family: inherit;
+    text-align: center;
+    outline: none;
+    -moz-appearance: textfield;
+    appearance: textfield;
+  }
+  .num::-webkit-outer-spin-button,
+  .num::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+
+  .num.atr      { color: #c8b014; } .num.atr:focus      { border-color: #c8b014; }
+  .num.risk     { color: #4a7cf7; } .num.risk:focus     { border-color: #4a7cf7; }
+  .num.contract { color: #c9d1e0; } .num.contract:focus { border-color: #c9d1e0; }
+  .num.sl       { color: #df4949; } .num.sl:focus       { border-color: #df4949; }
+
+  /* ── Results ────────────────────────────────── */
+  .result-boxes { display: flex; gap: 10px; margin-top: 8px; }
+
+  .res-box { flex: 1; border-radius: 6px; padding: 12px; text-align: center; }
+  .res-box.tp { background: #0a1a10; border: 1px solid #1a3a20; }
+  .res-box.rr { background: #111520; border: 1px solid #2a2f38; }
+
+  .res-val { font-size: 16px; font-weight: 700; }
+  .res-val.green { color: #0bb853; }
+  .res-val.blue  { color: #4a7cf7; }
+
+  .res-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: #5a6478; margin-top: 3px; }
+  .res-sub   { font-size: 10px; color: #5a6478; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="eyebrow">MNQ · Position Sizer</div>
+  <h1>Contract Calculator</h1>
+
+  <div class="field">
+    <div>
+      <div class="field-label">ATR</div>
+      <div class="field-sub">points</div>
+    </div>
+    <div class="stepper">
+      <button class="step-btn down" data-for="atr" data-dir="-1" aria-label="Decrease ATR">−</button>
+      <input class="num atr" type="number" id="atr" inputmode="decimal" value="18">
+      <button class="step-btn up" data-for="atr" data-dir="1" aria-label="Increase ATR">+</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="field">
+    <div>
+      <div class="field-label">Max Risk</div>
+      <div class="field-sub" id="riskSub"></div>
+    </div>
+    <div class="stepper">
+      <button class="step-btn down" data-for="risk" data-dir="-1" aria-label="Decrease max risk">−</button>
+      <input class="num risk" type="number" id="risk" inputmode="decimal" value="300">
+      <button class="step-btn up" data-for="risk" data-dir="1" aria-label="Increase max risk">+</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <div>
+      <div class="field-label">Contracts</div>
+      <div class="field-sub" id="contractSub"></div>
+    </div>
+    <div class="stepper">
+      <button class="step-btn down" data-for="contracts" data-dir="-1" aria-label="Decrease contracts">−</button>
+      <input class="num contract" type="number" id="contracts" inputmode="numeric" value="8">
+      <button class="step-btn up" data-for="contracts" data-dir="1" aria-label="Increase contracts">+</button>
+    </div>
+  </div>
+
+  <div class="field">
+    <div>
+      <div class="field-label">Stop Loss</div>
+      <div class="field-sub" id="slSub">—</div>
+    </div>
+    <div class="stepper">
+      <button class="step-btn down" data-for="sl" data-dir="-1" aria-label="Decrease stop loss">−</button>
+      <input class="num sl" type="number" id="sl" inputmode="decimal" value="18">
+      <button class="step-btn up" data-for="sl" data-dir="1" aria-label="Increase stop loss">+</button>
+    </div>
+  </div>
+
+  <hr>
+
+  <div class="result-boxes">
+    <div class="res-box tp">
+      <div class="res-val green" id="tpVal">—</div>
+      <div class="res-label">TP1 (1× ATR)</div>
+      <div class="res-sub" id="tpSub">—</div>
+    </div>
+    <div class="res-box rr">
+      <div class="res-val blue" id="rrVal">—</div>
+      <div class="res-label">R:R</div>
+      <div class="res-sub" id="winVal">—</div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const DOLLAR_PER_POINT = 2;
+  const TICKS_PER_POINT  = 4;
+
+  // Each field: step size, limits, decimals shown
+  const FIELDS = {
+    atr:       { step: 0.25, min: 0.25, max: 100,   dec: 2 },
+    risk:      { step: 10,   min: 10,   max: 10000, dec: 0 },
+    contracts: { step: 1,    min: 1,    max: 100,   dec: 0 },
+    sl:        { step: 0.25, min: 0.25, max: 200,   dec: 2 },
+  };
+
+  const el = id => document.getElementById(id);
+
+  // Read a field, clamped to its limits and snapped to its step
+  function get(id) {
+    const f = FIELDS[id];
+    let v = parseFloat(el(id).value);
+    if (!isFinite(v)) v = f.min;
+    // Max Risk keeps whatever dollar amount you type; the rest snap to their step
+    v = id === 'risk' ? Math.round(v) : Math.round(v / f.step) * f.step;
+    return Math.min(f.max, Math.max(f.min, v));
+  }
+
+  function set(id, v) {
+    const f = FIELDS[id];
+    v = Math.min(f.max, Math.max(f.min, v));
+    el(id).value = v.toFixed(f.dec);
+  }
+
+  // ── Linking ─────────────────────────────────
+  // Max Risk changed  → contracts = what fits inside that risk (stop stays)
+  // Contracts changed → max risk  = contracts × stop
+  // Stop changed      → max risk  = contracts × stop (contracts stay)
+  function fromRisk() {
+    const fit = Math.floor(get('risk') / (get('sl') * DOLLAR_PER_POINT));
+    set('contracts', Math.max(1, fit));
+  }
+  function riskFromPosition() {
+    set('risk', get('contracts') * get('sl') * DOLLAR_PER_POINT);
+  }
+  function onChange(id) {
+    if (id === 'risk') fromRisk();
+    else if (id === 'contracts' || id === 'sl') riskFromPosition();
+    render();
+  }
+
+  function render() {
+    const atr       = get('atr');
+    const risk      = get('risk');
+    const contracts = get('contracts');
+    const slPts     = get('sl');
+
+    const actualRisk = contracts * slPts * DOLLAR_PER_POINT;
+    const tpPts      = atr;
+    const tpTicks    = Math.round(tpPts * TICKS_PER_POINT);
+    const slTicks    = Math.round(slPts * TICKS_PER_POINT);
+    const tpWin      = contracts * tpPts * DOLLAR_PER_POINT;
+    const rr         = (tpPts / slPts).toFixed(2);
+
+    el('riskSub').textContent     = Math.round(actualRisk) !== Math.round(risk)
+                                      ? 'actual $' + Math.round(actualRisk) : 'dollars';
+    el('contractSub').textContent = '$' + (slPts * DOLLAR_PER_POINT).toFixed(2).replace(/\.00$/, '') + ' risk each';
+    el('slSub').textContent       = 'pts · ' + slTicks + ' ticks';
+    el('tpVal').textContent       = tpPts.toFixed(2) + ' pts';
+    el('tpSub').textContent       = tpTicks + ' ticks · +$' + Math.round(tpWin);
+    el('rrVal').textContent       = rr + 'R';
+    el('winVal').textContent      = '+$' + Math.round(tpWin) + ' at TP';
+  }
+
+  // ── Typing ──────────────────────────────────
+  Object.keys(FIELDS).forEach(id => {
+    const input = el(id);
+    // Live update while typing (skip half-typed values like "" or "5.")
+    input.addEventListener('input', () => {
+      if (input.value !== '' && isFinite(parseFloat(input.value))) onChange(id);
+    });
+    // On leaving the box, tidy the value shown
+    input.addEventListener('change', () => { set(id, get(id)); onChange(id); });
+    // Select the whole number on tap so you can just type over it
+    input.addEventListener('focus', () => input.select());
+  });
+
+  // ── − / + buttons (hold to repeat) ──────────
+  document.querySelectorAll('.step-btn').forEach(btn => {
+    const id  = btn.dataset.for;
+    const dir = +btn.dataset.dir;
+    let delay, repeat;
+
+    const bump = () => { set(id, get(id) + dir * FIELDS[id].step); onChange(id); };
+    const stop = () => { clearTimeout(delay); clearInterval(repeat); };
+
+    btn.addEventListener('pointerdown', e => {
+      e.preventDefault();
+      bump();
+      delay = setTimeout(() => { repeat = setInterval(bump, 70); }, 400);
+    });
+    ['pointerup', 'pointerleave', 'pointercancel'].forEach(ev => btn.addEventListener(ev, stop));
+    btn.addEventListener('contextmenu', e => e.preventDefault());
+  });
+
+  // Start: tidy values, size contracts from the starting max risk
+  Object.keys(FIELDS).forEach(id => set(id, get(id)));
+  fromRisk();
+  render();
+</script>
+</body>
+</html>
